@@ -11,7 +11,7 @@ namespace Terminus_Life_Support
     [KSPAddon(KSPAddon.Startup.Flight, false)]
     public class Terminus_Life_Support : MonoBehaviour
     {
-        public static double consumptionRate = 1.0 / KSPUtil.KerbinDay; //in seconds. 1 unit per 6 hours
+        public static double consumptionRate = 1.0 / (6*3600); //in seconds. 1 unit per 6 hours
         public static List<KerbalInfo> TrackedKerbals = new List<KerbalInfo>();
         public static List<KerbalInfo> LoadedKerbals = new List<KerbalInfo>();
 
@@ -75,7 +75,7 @@ namespace Terminus_Life_Support
                     i--;
                 }
             }*/
-            
+            PartResourceDefinition LSRscDef = PartResourceLibrary.Instance.GetDefinition("LifeSupport");
 
             for (int i = 0; i < LoadedVessels.Count; i++)
             {
@@ -89,8 +89,9 @@ namespace Terminus_Life_Support
 
                 int crewCount = v.GetCrewCount();
                 //double totalReqLS = 0;
+
                 Vessel.ActiveResource LSRSC = v.GetActiveResources().FirstOrDefault(rs => rs.info.name == "LifeSupport");
-                double LSRemaining = LSRSC.amount;
+                double LSRemaining = (LSRSC != null) ? LSRSC.amount : 0;
                 //Debug.Log("Terminus LS: " + LSRemaining + " remaining LS");
                 foreach (ProtoCrewMember pcm in new List<ProtoCrewMember>(v.GetVesselCrew()))
                 {
@@ -125,7 +126,14 @@ namespace Terminus_Life_Support
                     {
                         double deltaTime = currentTime - ki.LastSated;
                         double desiredLS = consumptionRate * deltaTime;
-                        double LSGotten = pcm.KerbalRef != null ? pcm.KerbalRef.InPart.RequestResource("LifeSupport", Math.Min(desiredLS, LSRemaining / crewCount)) : 0;
+                        List<PartResource> resourceList = new List<PartResource>();
+                        double LSGotten = 0;
+                        if (pcm.KerbalRef != null)
+                        {
+                            //pcm.KerbalRef.InPart.GetConnectedResources(LSRsc.id, LSRsc.resourceFlowMode, resourceList);
+                            LSGotten = pcm.KerbalRef.InPart.RequestResource(LSRscDef.id, Math.Min(desiredLS, LSRemaining / crewCount), LSRscDef.resourceFlowMode);
+                        }
+                        // = pcm.KerbalRef != null ?  //.RequestResource("LifeSupport", Math.Min(desiredLS, LSRemaining / crewCount)) : 0;
                         LSRemaining -= LSGotten;
                         ki.LastSated += deltaTime * (LSGotten / desiredLS); //tries to take all the resources it has missed out on
 
